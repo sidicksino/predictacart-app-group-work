@@ -29,9 +29,9 @@ logger.info(f"Loading similarity matrix from: {similarity_path}")
 try:
     movies = pickle.load(open(movies_list_path, 'rb'))
     similarity = pickle.load(open(similarity_path, 'rb'))
-    logger.info(f"✅ Model loaded! Total movies: {len(movies)}")
+    logger.info(f"Model loaded! Total movies: {len(movies)}")
 except Exception as e:
-    logger.error(f"❌ Failed to load model artifacts: {e}")
+    logger.error(f"Failed to load model artifacts: {e}")
     raise RuntimeError(f"Model loading failed: {e}")
 
 # ─── Create the FastAPI App ────────────────────────────────
