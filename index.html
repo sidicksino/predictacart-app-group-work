@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 PredictaMovie — Content-Based Recommender</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #050515;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(139, 92, 246, 0.4);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-glow: rgba(139, 92, 246, 0.35);
+            --success: #10b981;
+            --error: #f87171;
+            --gold: #fbbf24;
+            --silver: #cbd5e1;
+            --bronze: #d97706;
+        }
+
+        body {
+            font-family: 'Outfit', 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 40px 20px;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(15, 12, 30, 1) 0%, var(--bg-dark) 100%);
+            background-attachment: fixed;
+        }
+
+        /* ── Header ────────────────────────────────── */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-main) 30%, #a78bfa 70%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.8px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 300;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .badge {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 6px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            transition: all 0.3s;
+        }
+
+        .badge.offline {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--error);
+            border-color: rgba(248, 113, 113, 0.2);
+        }
+
+        /* ── Search Container & Autocomplete ─────────── */
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.6s ease-out 0.1s backwards;
+            z-index: 10;
+        }
+
+        .search-container {
+            background: rgba(15, 12, 30, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 28px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .search-container label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            outline: none;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(156, 163, 175, 0.6);
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .input-group button {
+            padding: 16px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            font-family: 'Outfit', sans-serif;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+        }
+
+        .input-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+
+        .input-group button:active {
+            transform: translateY(0);
+        }
+
+        .input-group button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Autocomplete Suggestions */
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            background: rgba(10, 8, 22, 0.95);
+            backdrop-filter: blur(25px);
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            border-radius: 16px;
+            margin-top: 6px;
+            overflow-x: hidden;
+        }
+
+        .autocomplete-items div {
+            padding: 14px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            color: rgba(243, 244, 246, 0.85);
+            text-align: left;
+        }
+
+        .autocomplete-items div:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-items div:hover,
+        .autocomplete-active {
+            background-color: rgba(139, 92, 246, 0.25);
+            color: #fff;
+            padding-left: 24px;
+        }
+
+        .autocomplete-items div strong {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        /* ── Results Panel ────────────────────────── */
+        .results-panel {
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 30px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .results-header {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .results-header strong {
+            color: var(--accent-cyan);
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        /* Movie Poster Grid Layout */
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 28px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .movie-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .movie-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -5px rgba(139, 92, 246, 0.25), 
+                        0 0 15px rgba(6, 182, 212, 0.1);
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+        }
+
+        .poster-container {
+            width: 100%;
+            aspect-ratio: 2/3;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+        }
+
+        .poster-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease-out;
+            opacity: 0;
+        }
+
+        .poster-img.loaded {
+            opacity: 1;
+        }
+
+        .movie-card:hover .poster-img {
+            transform: scale(1.05);
+        }
+
+        .poster-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(20, 16, 40, 0.8), rgba(8, 5, 20, 0.95));
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            z-index: 1;
+        }
+
+        .poster-placeholder svg {
+            width: 42px;
+            height: 42px;
+            stroke: rgba(255, 255, 255, 0.12);
+            margin-bottom: 12px;
+        }
+
+        .rank-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            z-index: 3;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #d97706); color: #111827; }
+        .rank-2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #111827; }
+        .rank-3 { background: linear-gradient(135deg, #f59e0b, #b45309); color: #fff; }
+        .rank-4, .rank-5 { background: rgba(10, 8, 22, 0.85); color: var(--text-main); }
+
+        .card-details {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .movie-card-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.35;
+            color: var(--text-main);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            height: 2.7em;
+            text-align: left;
+        }
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            gap: 10px;
+        }
+
+        .match-rating {
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            letter-spacing: 0.5px;
+        }
+
+        .match-rating.high {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+
+        .find-similar-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .find-similar-btn:hover {
+            color: var(--accent-primary);
+            background: rgba(255, 255, 255, 0.06);
+            transform: scale(1.05);
+        }
+
+        /* ── Skeleton Loaders (Pulsing shimmers) ── */
+        .skeleton-card {
+            pointer-events: none;
+        }
+
+        .skeleton-shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.02) 25%,
+                rgba(255, 255, 255, 0.07) 37%,
+                rgba(255, 255, 255, 0.02) 63%
+            );
+            background-size: 400% 100%;
+            animation: shimmer-pulse 1.4s ease infinite;
+        }
+
+        @keyframes shimmer-pulse {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+
+        .skeleton-title {
+            height: 16px;
+            width: 85%;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-text {
+            height: 12px;
+            width: 45%;
+            border-radius: 4px;
+        }
+
+        /* Custom Scrollbar for autocomplete dropdown */
+        .autocomplete-items::-webkit-scrollbar {
+            width: 6px;
+        }
+        .autocomplete-items::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 10px;
+        }
+        .autocomplete-items::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+        }
+        .autocomplete-items::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ── Metadata Stats ── */
+        .meta-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .meta-stats span {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .meta-stats span strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* ── Alerts / States ── */
+        .error-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 30px auto 0;
+            padding: 18px 24px;
+            border-radius: 16px;
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.18);
+            color: var(--error);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Movie Carousel Styling (Inspired by reference Svelte UI) ── */
+        .carousel-wrapper {
+            width: 100%;
+            max-width: 1100px;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .carousel-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-align: left;
+            padding-left: 4px;
+        }
+
+        .carousel-scroller {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 8px 4px 16px 4px;
+            white-space: nowrap;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Customize scrollbar to look sleek and non-obtrusive */
+        .carousel-scroller::-webkit-scrollbar {
+            height: 6px;
+        }
+        .carousel-scroller::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 10px;
+        }
+        .carousel-scroller::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .carousel-scroller::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.4);
+        }
+
+        .carousel-item {
+            flex: 0 0 auto;
+            width: 140px;
+            height: 210px;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-item:hover {
+            transform: scale(1.06) translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: 0 12px 24px -4px rgba(139, 92, 246, 0.35),
+                        0 0 10px rgba(6, 182, 212, 0.15);
+        }
+
+        .carousel-item:hover img {
+            opacity: 1;
+        }
+
+        .carousel-item-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 24px 10px 8px;
+            background: linear-gradient(to top, rgba(5, 5, 21, 0.95) 0%, rgba(5, 5, 21, 0.6) 60%, rgba(5, 5, 21, 0) 100%);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-align: center;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .carousel-item:hover .carousel-item-title {
+            opacity: 1;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            padding-top: 60px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        .footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 PredictaMovie</h1>
+        <p>Dynamic Content-Based Movie Recommendation Engine</p>
+        <span class="badge" id="statusBadge">Checking server connection...</span>
+    </div>
+
+    <!-- Cinematic Featured Movie Carousel -->
+    <div class="carousel-wrapper">
+        <div class="carousel-title">Featured Movies</div>
+        <div class="carousel-scroller" id="featuredCarousel"></div>
+    </div>
+
+    <div class="search-wrapper">
+        <div class="search-container">
+            <label for="movieInput">Search Movie Database</label>
+            <div class="input-group">
+                <input type="text" id="movieInput" placeholder="Enter movie title (e.g., Inception, Iron Man...)" autocomplete="off">
+                <button id="searchBtn" onclick="getRecommendations()">Recommend</button>
+            </div>
+            <div id="autocomplete-suggestions"></div>
+        </div>
+    </div>
+
+    <div class="results-panel" id="resultsPanel">
+        <div class="empty-state">
+            <span class="icon">🍿</span>
+            <p>Enter a movie title above or select one from the autocomplete dropdown</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        Powered by Cosine Similarity & TMDB API · Developed in FastAPI
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        const input = document.getElementById('movieInput');
+        const btn = document.getElementById('searchBtn');
+        const badge = document.getElementById('statusBadge');
+        const autocompleteContainer = document.getElementById('autocomplete-suggestions');
+        
+        // ── Featured Movies list (IDs mapped from the reference Streamlit App) ──
+        const FEATURED_MOVIES = [
+            { id: 1632, title: "Mississippi Burning" },
+            { id: 299536, title: "Avengers: Infinity War" },
+            { id: 17455, title: "Hellraiser: Deader" },
+            { id: 2830, title: "My Boss's Daughter" },
+            { id: 429422, title: "Capone" },
+            { id: 9722, title: "Bewitched" },
+            { id: 13972, title: "The Women" },
+            { id: 240, title: "The Godfather: Part II" },
+            { id: 155, title: "The Dark Knight" },
+            { id: 598, title: "City of God" },
+            { id: 914, title: "The Great Dictator" },
+            { id: 255709, title: "Hope" },
+            { id: 572154, title: "Rascal Does Not Dream of a Dreaming Girl" }
+        ];
+
+        let movieTitles = [];
+        let currentFocus = -1;
+
+        // ── Render Featured Carousel (inspired by the reference ImageGallery Svelte design) ──
+        function renderFeaturedCarousel() {
+            const carouselContainer = document.getElementById('featuredCarousel');
+            if (!carouselContainer) return;
+            carouselContainer.innerHTML = '';
+            
+            FEATURED_MOVIES.forEach(movie => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'carousel-item';
+                itemDiv.title = `Find recommendations similar to ${movie.title}`;
+                
+                // Clicking a poster selects the movie and runs recommendation
+                itemDiv.addEventListener('click', () => {
+                    getRecommendations(movie.title);
+                });
+                
+                // Set default loading SVG poster
+                itemDiv.innerHTML = `
+                    <img id="carousel-poster-${movie.id}" alt="${movie.title}" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='210' viewBox='0 0 140 210'><rect width='140' height='210' fill='%23141028'/><text x='70' y='105' font-size='10' fill='%239ca3af' text-anchor='middle' alignment-baseline='middle'>Loading...</text></svg>">
+                    <div class="carousel-item-title">${movie.title}</div>
+                `;
+                carouselContainer.appendChild(itemDiv);
+                
+                // Asynchronously fetch poster from TMDB and update image
+                fetchPoster(movie.id).then(posterUrl => {
+                    const img = document.getElementById(`carousel-poster-${movie.id}`);
+                    if (posterUrl && img) {
+                        img.src = posterUrl;
+                    } else if (img) {
+                        // Fallback SVG with movie title text
+                        img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='210' viewBox='0 0 140 210'><rect width='140' height='210' fill='%23141028'/><text x='70' y='95' font-size='10' fill='%239ca3af' text-anchor='middle' font-weight='bold'>${movie.title.substring(0, 15)}...</text></svg>`;
+                    }
+                });
+            });
+        }
+
+        // ── Check backend server connection & load autocomplete data ──
+        (async () => {
+            // Render the poster carousel immediately on load
+            renderFeaturedCarousel();
+
+            try {
+                // Fetch server health
+                const resHealth = await fetch(`${API_BASE}/health`);
+                const dataHealth = await resHealth.json();
+                badge.textContent = `Online · ${dataHealth.movies_count} Movies Loaded`;
+                badge.classList.remove('offline');
+
+                // Load movie list for autocomplete list
+                const resMovies = await fetch(`${API_BASE}/movies`);
+                const dataMovies = await resMovies.json();
+                movieTitles = dataMovies.movies;
+            } catch (e) {
+                console.error("Initialization failed", e);
+                badge.textContent = 'Offline · Connection Error';
+                badge.classList.add('offline');
+            }
+        })();
+
+        // ── Autocomplete Filtering Logic ──
+        input.addEventListener('input', function() {
+            const val = this.value;
+            closeAllLists();
+            if (!val) return;
+            currentFocus = -1;
+
+            const matches = [];
+            const valLower = val.toLowerCase();
+            
+            // Fuzzy/contains search, cap suggestions at 10 items
+            for (let i = 0; i < movieTitles.length; i++) {
+                if (movieTitles[i].toLowerCase().includes(valLower)) {
+                    matches.push(movieTitles[i]);
+                    if (matches.length >= 10) break;
+                }
+            }
+
+            if (matches.length === 0) return;
+
+            const listDiv = document.createElement('div');
+            listDiv.setAttribute('id', this.id + '-autocomplete-list');
+            listDiv.setAttribute('class', 'autocomplete-items');
+            autocompleteContainer.appendChild(listDiv);
+
+            matches.forEach(match => {
+                const itemDiv = document.createElement('div');
+                const matchIndex = match.toLowerCase().indexOf(valLower);
+                
+                // Highlight input match string in UI list
+                const before = match.substring(0, matchIndex);
+                const middle = match.substring(matchIndex, matchIndex + val.length);
+                const after = match.substring(matchIndex + val.length);
+                
+                itemDiv.innerHTML = `${before}<strong>${middle}</strong>${after}`;
+                itemDiv.innerHTML += `<input type="hidden" value="${match.replace(/"/g, '&quot;')}">`;
+
+                itemDiv.addEventListener('click', function() {
+                    input.value = this.getElementsByTagName('input')[0].value;
+                    closeAllLists();
+                    getRecommendations();
+                });
+                listDiv.appendChild(itemDiv);
+            });
+        });
+
+        // ── Keyboard Autocomplete Navigation ──
+        input.addEventListener('keydown', function(e) {
+            let list = document.getElementById(this.id + '-autocomplete-list');
+            if (list) list = list.getElementsByTagName('div');
+            
+            if (e.keyCode === 40) { // DOWN Arrow
+                currentFocus++;
+                addActive(list);
+            } else if (e.keyCode === 38) { // UP Arrow
+                currentFocus--;
+                addActive(list);
+            } else if (e.keyCode === 13) { // ENTER Key
+                if (currentFocus > -1) {
+                    e.preventDefault();
+                    if (list) list[currentFocus].click();
+                } else {
+                    getRecommendations();
+                }
+            } else if (e.keyCode === 27) { // ESCAPE Key
+                closeAllLists();
+            }
+        });
+
+        function addActive(list) {
+            if (!list) return false;
+            removeActive(list);
+            if (currentFocus >= list.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = list.length - 1;
+            
+            list[currentFocus].classList.add('autocomplete-active');
+            list[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+
+        function removeActive(list) {
+            for (let i = 0; i < list.length; i++) {
+                list[i].classList.remove('autocomplete-active');
+            }
+        }
+
+        function closeAllLists(elmnt) {
+            const listDivs = document.getElementsByClassName('autocomplete-items');
+            for (let i = 0; i < listDivs.length; i++) {
+                if (elmnt !== listDivs[i] && elmnt !== input) {
+                    listDivs[i].parentNode.removeChild(listDivs[i]);
+                }
+            }
+        }
+
+        // Close dropdown when user clicks outside search box
+        document.addEventListener('click', e => {
+            closeAllLists(e.target);
+        });
+
+        // ── TMDB Poster Fetcher ──
+        async function fetchPoster(movieId) {
+            const API_KEY = "c7ec19ffdd3279641fb606d19ceb9bb1";
+            try {
+                const response = await fetch(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${API_KEY}&language=en-US`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.poster_path) {
+                        return `https://image.tmdb.org/t/p/w342${data.poster_path}`;
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to fetch poster path for ID ${movieId}`, e);
+            }
+            return null;
+        }
+
+        // ── Fetch Recommendations ──
+        async function getRecommendations(targetTitle = null) {
+            const queryTitle = targetTitle || input.value.trim();
+            if (!queryTitle) {
+                input.focus();
+                return;
+            }
+
+            if (targetTitle) {
+                input.value = targetTitle;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Searching...';
+            
+            // Show Shimmer Loading Grid
+            renderSkeletonGrid(queryTitle);
+
+            try {
+                const res = await fetch(`${API_BASE}/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ movie_title: queryTitle })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || `Server error: ${res.status}`);
+                }
+
+                const data = await res.json();
+                renderResults(data);
+            } catch (err) {
+                document.getElementById('resultsPanel').innerHTML = `
+                    <div class="error-container">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span>${err.message}</span>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Recommend';
+            }
+        }
+
+        // ── Render Loading Skeleton Grid ──
+        function renderSkeletonGrid(title) {
+            let html = `
+                <div class="results-header">Searching recommendations for <strong>"${title}"</strong>...</div>
+                <div class="movies-grid">
+            `;
+            for (let i = 0; i < 5; i++) {
+                html += `
+                    <div class="movie-card skeleton-card">
+                        <div class="poster-container skeleton-shimmer"></div>
+                        <div class="card-details">
+                            <div class="skeleton-title skeleton-shimmer"></div>
+                            <div class="skeleton-title skeleton-shimmer" style="width: 55%"></div>
+                            <div class="card-footer" style="margin-top: 15px;">
+                                <div class="skeleton-text skeleton-shimmer"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            document.getElementById('resultsPanel').innerHTML = html;
+        }
+
+        // ── Render recommendations result ──
+        function renderResults(data) {
+            const resultsPanel = document.getElementById('resultsPanel');
+            let html = `
+                <div class="results-header">Because you liked <strong>"${data.movie_title}"</strong></div>
+                <div class="movies-grid" id="recommendationsGrid"></div>
+                <div class="meta-stats">
+                    <span>⚡ Latency: <strong>${data.latency_ms} ms</strong></span>
+                    <span>🧠 Model: <strong>Cosine Similarity (v1)</strong></span>
+                </div>
+            `;
+            resultsPanel.innerHTML = html;
+
+            const grid = document.getElementById('recommendationsGrid');
+
+            // Render each movie card in the grid
+            data.results.forEach((movie, i) => {
+                const scorePercentage = Math.round(movie.score * 100);
+                const isHighMatch = scorePercentage >= 75;
+                const matchClass = isHighMatch ? 'match-rating high' : 'match-rating';
+
+                const card = document.createElement('div');
+                card.className = 'movie-card';
+                card.innerHTML = `
+                    <div class="rank-badge rank-${i+1}">#${i+1}</div>
+                    <div class="poster-container">
+                        <div class="poster-placeholder" id="placeholder-${movie.id}">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5h16.5V3.75H3.75zm1.5 1.5h13.5v13.5H5.25V5.25zm6.75 3a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5zm0 1.5a2.25 2.25 0 110 4.5 2.25 2.25 0 010-4.5z"/>
+                            </svg>
+                            <span>${movie.title}</span>
+                        </div>
+                        <img class="poster-img" id="poster-${movie.id}" alt="${movie.title}">
+                    </div>
+                    <div class="card-details">
+                        <h3 class="movie-card-title">${movie.title}</h3>
+                        <div class="card-footer">
+                            <span class="${matchClass}">${scorePercentage}% Match</span>
+                            <button class="find-similar-btn" onclick="event.stopPropagation(); getRecommendations(this.closest('.movie-card').querySelector('.movie-card-title').innerText)" title="Find recommendations similar to ${movie.title}">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Set up click handler to search this movie directly
+                card.addEventListener('click', () => {
+                    getRecommendations(movie.title);
+                });
+
+                grid.appendChild(card);
+
+                // Fetch poster image from TMDB in parallel
+                fetchPoster(movie.id).then(posterUrl => {
+                    const img = document.getElementById(`poster-${movie.id}`);
+                    const placeholder = document.getElementById(`placeholder-${movie.id}`);
+                    if (posterUrl && img) {
+                        img.src = posterUrl;
+                        img.onload = () => {
+                            img.classList.add('loaded');
+                            if (placeholder) placeholder.style.display = 'none';
+                        };
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
